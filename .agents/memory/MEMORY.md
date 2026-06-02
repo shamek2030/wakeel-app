@@ -1,1 +1,2 @@
 - [Expo SQLite web hang](expo-sqlite-web-hang.md) — expo-sqlite openDatabaseAsync never settles on web; gating render on DB init blanks the web preview.
+- [Wakeel spec vs platform](wakeel-platform-vs-spec.md) — spec asked SDK 51 + React Navigation; platform skill mandates SDK 54 + Expo Router. Don't rewrite to match spec text.
