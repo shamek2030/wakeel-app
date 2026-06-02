@@ -62,6 +62,11 @@ export function RecordDetailScreen() {
   };
 
   const onExport = async () => {
+    if (!isPro) {
+      setUpgradeMsg('تصدير ملفات PDF متاح في وكيل برو');
+      setUpgrade(true);
+      return;
+    }
     try {
       const html = buildRecordHtml({ meta, schema, body, settings });
       const { uri } = await Print.printToFileAsync({ html });

@@ -47,6 +47,7 @@ export function Form31Screen() {
     deductType: 'السلوك', deductPoints: '0', letter: '',
   });
   const [upgrade, setUpgrade] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState('صياغة الخطابات بالذكاء الاصطناعي متاحة في وكيل برو');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => { (async () => setStudents(await getStudents()))(); }, []);
@@ -64,7 +65,7 @@ export function Form31Screen() {
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const onGenerateLetter = async () => {
-    if (!isPro) { setUpgrade(true); return; }
+    if (!isPro) { setUpgradeMsg('صياغة الخطابات بالذكاء الاصطناعي متاحة في وكيل برو'); setUpgrade(true); return; }
     try {
       const history = await getStudentViolations(data.student.id);
       const system = 'أنت مساعد إداري متخصص في صياغة الخطابات الرسمية لوكيل شؤون الطلاب في مدرسة سعودية. اكتب بأسلوب رسمي مهني مختصر وفق لوائح وزارة التعليم، دون مقدمات زائدة.';
@@ -112,6 +113,7 @@ export function Form31Screen() {
   };
 
   const onExport = async () => {
+    if (!isPro) { setUpgradeMsg('تصدير ملفات PDF متاح في وكيل برو'); setUpgrade(true); return; }
     try {
       const degMeta = DEGREES.find((d) => d.degree === data.degree);
       const sections = [
@@ -249,7 +251,7 @@ export function Form31Screen() {
         </View>
       )}
 
-      <UpgradeModal visible={upgrade} onClose={() => setUpgrade(false)} message="صياغة الخطابات بالذكاء الاصطناعي متاحة في وكيل برو" />
+      <UpgradeModal visible={upgrade} onClose={() => setUpgrade(false)} message={upgradeMsg} />
     </ScreenContainer>
   );
 }
