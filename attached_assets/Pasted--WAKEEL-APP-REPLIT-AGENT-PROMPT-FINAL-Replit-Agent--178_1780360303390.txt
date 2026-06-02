@@ -1,0 +1,1345 @@
+# WAKEEL APP — REPLIT AGENT PROMPT (FINAL)
+
+# تطبيق وكيل — البرومبت النهائي الشامل لـ Replit Agent
+
+-----
+
+## CRITICAL RULES — READ BEFORE ANYTHING ELSE
+
+1. Output EVERY file completely. No truncation. No `// ... rest of code`. No placeholders.
+1. Use ONLY these libraries — install nothing else without explicit instruction.
+1. All UI text must be Arabic only. Zero English visible to the user.
+1. RTL everywhere: `I18nManager.forceRTL(true)` before render.
+1. Every screen in its own file. Every component reusable.
+1. Build to run on BOTH Expo Go AND EAS Build (Android APK).
+1. Architecture must be modular — adding new screens later requires ZERO changes to existing files.
+
+-----
+
+## PROJECT IDENTITY
+
+```
+App Name:       وكيل
+Tagline:        مكتب الوكيل في جوالك
+Target User:    وكيل شؤون الطلاب — Saudi middle school vice principal
+Platform:       React Native + Expo SDK 51
+Navigation:     React Navigation v6 (Stack + Bottom Tabs)
+Storage:        Expo SQLite — LOCAL ONLY, never leaves the device
+Fonts:          Cairo (primary) + Tajawal (secondary) via expo-google-fonts
+Icons:          @expo/vector-icons (Ionicons)
+AI:             Claude API via fetch() — Pro tier only
+```
+
+-----
+
+## FILE STRUCTURE — OUTPUT ALL OF THESE
+
+```
+wakeel/
+├── app.json
+├── package.json
+├── App.jsx                          ← entry point
+│
+├── src/
+│   ├── theme/
+│   │   ├── colors.js
+│   │   └── typography.js
+│   │
+│   ├── db/
+│   │   ├── database.js              ← SQLite init + all table creation
+│   │   └── queries.js               ← all SQL query functions
+│   │
+│   ├── context/
+│   │   ├── SettingsContext.jsx      ← school name, logo, staff names — used everywhere
+│   │   └── ProContext.jsx           ← Freemium gate — isPro state
+│   │
+│   ├── hooks/
+│   │   ├── useFonts.js
+│   │   └── useAI.js                 ← Claude API hook (Pro only)
+│   │
+│   ├── components/
+│   │   ├── MoEHeader.jsx            ← Official Ministry of Education letterhead
+│   │   ├── Card.jsx
+│   │   ├── ProGate.jsx              ← Lock overlay for Pro features
+│   │   ├── TabBar.jsx
+│   │   └── StatusBar.jsx
+│   │
+│   ├── navigation/
+│   │   └── AppNavigator.jsx         ← all navigation defined here
+│   │
+│   └── screens/
+│       ├── SplashScreen.jsx
+│       ├── LoginScreen.jsx
+│       ├── HomeScreen.jsx
+│       ├── StudentsScreen.jsx       ← student list + import Excel
+│       ├── StudentCardScreen.jsx    ← 360° student profile
+│       ├── RecordsScreen.jsx        ← 15 official registers grid
+│       ├── RecordDetailScreen.jsx   ← official form + AI fill
+│       ├── Form31Screen.jsx         ← deep Form 31 — 4-party workflow
+│       ├── ReportsScreen.jsx
+│       ├── EvidenceScreen.jsx       ← رفع الشواهد
+│       ├── SettingsScreen.jsx       ← school info + logo + staff names
+│       ├── PrivacyScreen.jsx
+│       └── SubscriptionScreen.jsx   ← Freemium upgrade
+```
+
+-----
+
+## SECTION 1 — DEPENDENCIES (package.json)
+
+```json
+{
+  "name": "wakeel",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "expo": "~51.0.0",
+    "expo-status-bar": "~1.12.1",
+    "expo-font": "~12.0.10",
+    "expo-splash-screen": "~0.27.5",
+    "expo-sqlite": "~14.0.4",
+    "expo-document-picker": "~12.0.2",
+    "expo-file-system": "~17.0.1",
+    "expo-image-picker": "~15.0.7",
+    "expo-sharing": "~12.0.1",
+    "expo-print": "~13.0.1",
+    "react": "18.2.0",
+    "react-native": "0.74.1",
+    "@expo/vector-icons": "^14.0.2",
+    "@expo-google-fonts/cairo": "^0.2.3",
+    "@expo-google-fonts/tajawal": "^0.2.3",
+    "@react-navigation/native": "^6.1.17",
+    "@react-navigation/stack": "^6.3.29",
+    "@react-navigation/bottom-tabs": "^6.5.20",
+    "react-native-safe-area-context": "4.10.1",
+    "react-native-screens": "3.31.1",
+    "react-native-gesture-handler": "~2.16.1",
+    "react-native-reanimated": "~3.10.1",
+    "xlsx": "^0.18.5"
+  }
+}
+```
+
+-----
+
+## SECTION 2 — DESIGN SYSTEM
+
+### colors.js
+
+```js
+export const C = {
+  primary:     '#0F3D5C',
+  primaryDark: '#0A2C43',
+  accent:      '#95D4B5',
+  accentDark:  '#5FB894',
+  bg:          '#FAFCFB',
+  card:        '#FFFFFF',
+  text:        '#1F2933',
+  textLight:   '#6B7280',
+  border:      '#E8EDF1',
+  blue:        '#3B82F6', blueBg:   '#E8F1FB',
+  red:         '#EF4444', redBg:    '#FCEBEB',
+  green:       '#10B981', greenBg:  '#E1F5EE',
+  purple:      '#8B5CF6', purpleBg: '#EEEDFE',
+  amber:       '#F59E0B', amberBg:  '#FEF3C7',
+};
+```
+
+### typography.js
+
+```js
+export const FONTS = {
+  regular:   'Cairo_400Regular',
+  medium:    'Cairo_500Medium',
+  semibold:  'Cairo_600SemiBold',
+  bold:      'Cairo_700Bold',
+  black:     'Cairo_900Black',
+  secondary: 'Tajawal_400Regular',
+  secondaryBold: 'Tajawal_700Bold',
+};
+export const SIZES = { xs:11, sm:13, md:15, lg:17, xl:20, xxl:24, hero:36 };
+```
+
+-----
+
+## SECTION 3 — SQLite DATABASE (LOCAL ONLY)
+
+### database.js — create all tables on first launch
+
+```sql
+/* students table */
+CREATE TABLE IF NOT EXISTS students (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  national_id TEXT UNIQUE,
+  name TEXT NOT NULL,
+  grade TEXT,
+  section TEXT,
+  guardian_name TEXT,
+  guardian_phone TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+/* records table — all 15 official registers */
+CREATE TABLE IF NOT EXISTS records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  form_code TEXT NOT NULL,       -- e.g. 'و.ط.ع.ن-04-03'
+  form_number INTEGER,           -- 1..15
+  title TEXT NOT NULL,
+  student_id INTEGER,
+  body_json TEXT,                -- JSON string of form fields
+  ai_body TEXT,                  -- AI-generated Arabic text
+  status TEXT DEFAULT 'draft',   -- draft | approved | archived
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (student_id) REFERENCES students(id)
+);
+
+/* violations table */
+CREATE TABLE IF NOT EXISTS violations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id INTEGER NOT NULL,
+  degree INTEGER NOT NULL,       -- 1..4
+  description TEXT,
+  deduct_type TEXT,              -- conduct | attendance
+  deduct_points INTEGER,
+  procedure_text TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (student_id) REFERENCES students(id)
+);
+
+/* evidence table — شواهد */
+CREATE TABLE IF NOT EXISTS evidence (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  category TEXT,                 -- achievement | training | administrative
+  file_uri TEXT,
+  description TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+/* settings table — single row */
+CREATE TABLE IF NOT EXISTS settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  school_name TEXT DEFAULT '........',
+  education_admin TEXT DEFAULT 'الإدارة العامة للتعليم بمكة المكرمة',
+  vice_principal TEXT DEFAULT '',
+  principal TEXT DEFAULT '',
+  admin_assistant TEXT DEFAULT '',
+  logo_uri TEXT,
+  school_level TEXT DEFAULT 'متوسطة',
+  is_pro INTEGER DEFAULT 0,
+  pro_expiry TEXT
+);
+
+/* Insert default settings row */
+INSERT OR IGNORE INTO settings (id) VALUES (1);
+```
+
+### queries.js — export these functions:
+
+- `getSettings()` → returns single settings row
+- `updateSettings(fields)` → partial update
+- `importStudents(rows[])` → bulk insert from Excel
+- `getStudents(searchQuery?)` → with optional search
+- `getStudent(id)` → with all related records + violations
+- `insertRecord(data)` → save form record
+- `getRecords(formNumber?)` → filter by form type
+- `updateRecord(id, fields)` → approve / archive
+- `insertViolation(data)`
+- `getStudentViolations(studentId)`
+- `insertEvidence(data)`
+- `getAllEvidence()`
+
+-----
+
+## SECTION 4 — SETTINGS CONTEXT
+
+### SettingsContext.jsx
+
+Wrap the entire app. Provides:
+
+```js
+{
+  settings,          // current settings row from SQLite
+  updateSettings,    // saves to SQLite + refreshes context
+  schoolHeader,      // pre-built object for MoEHeader component
+}
+```
+
+`schoolHeader` shape:
+
+```js
+{
+  schoolName:      settings.school_name,
+  educationAdmin:  settings.education_admin,
+  logoUri:         settings.logo_uri,
+  vicePrincipal:   settings.vice_principal,
+  principal:       settings.principal,
+  adminAssistant:  settings.admin_assistant,
+}
+```
+
+**Any screen that renders MoEHeader reads from this context automatically. Changing the name in Settings updates EVERY form instantly.**
+
+-----
+
+## SECTION 5 — MoEHeader COMPONENT
+
+### MoEHeader.jsx
+
+Renders the official Ministry of Education letterhead used in ALL 15 registers.
+Reads from `SettingsContext` — never hard-coded.
+
+Visual structure (matches the real ministry file):
+
+```
+┌─────────────────────────────────────────┐
+│ [dark teal band]                        │
+│  الإدارة العامة للتعليم بمكة المكرمة   │
+│  مدرسة {schoolName}        [Logo/Icon]  │
+├─────────────────────────────────────────┤
+│      ┌─── اسم المدرسة ───┐              │  ← centered pill
+│      └────────────────────┘              │
+├─────────────────────────────────────────┤
+│  [form title pill — border primary]     │
+│  رمز النموذج: و.ط.ع.ن-XX-XX            │
+└─────────────────────────────────────────┘
+      [teal→primary gradient footer bar]
+```
+
+Props: `{ formTitle, formCode, date?, serial? }`
+
+-----
+
+## SECTION 6 — PRO GATE
+
+### ProContext.jsx
+
+```js
+{ isPro, activatePro, proExpiry }
+// reads is_pro from SQLite settings
+// activatePro() sets is_pro=1 + pro_expiry date
+```
+
+### ProGate.jsx
+
+```jsx
+// Usage: wrap any Pro-only UI element
+<ProGate feature="تصدير PDF">
+  <ExportButton />
+</ProGate>
+
+// If !isPro: renders a lock card instead:
+//   🔒 icon + feature name + "اشترك في Pro" button
+//   Opens SubscriptionScreen on press
+```
+
+-----
+
+## SECTION 7 — NAVIGATION
+
+### AppNavigator.jsx
+
+```
+Stack Navigator (root)
+├── SplashScreen          (no header)
+├── LoginScreen           (no header)
+└── MainTabs              (Bottom Tab Navigator, no header)
+    ├── HomeScreen         icon: home       label: الرئيسية
+    ├── StudentsScreen     icon: people     label: الطلاب
+    ├── RecordsScreen      icon: archive    label: السجلات
+    ├── ReportsScreen      icon: bar-chart  label: التقارير
+    └── MoreStack          icon: grid       label: المزيد
+        ├── MoreScreen     (hub: Evidence, Settings, Privacy, Subscription)
+        ├── EvidenceScreen
+        ├── SettingsScreen
+        ├── PrivacyScreen
+        └── SubscriptionScreen
+
+Stack screens (pushed from anywhere):
+  StudentCardScreen   ← from StudentsScreen
+  RecordDetailScreen  ← from RecordsScreen
+  Form31Screen        ← from RecordsScreen (form #11)
+```
+
+Tab bar: RTL order (row-reverse), active = primary color + top indicator line, inactive = gray, height 64px, white background.
+
+-----
+
+## SECTION 8 — SCREENS (detailed specs)
+
+-----
+
+### SplashScreen.jsx
+
+- Full screen background: `linear-gradient(155deg, primary, primaryDark)`
+- Center: ShieldCheck icon (56px, accent color) in frosted card (110×110, radius 30)
+- Below icon: “وكيل” text (56px, Cairo Black, white)
+- Below: “مكتب الوكيل في جوالك” (17px, Tajawal, accent color)
+- Decorative radial glow circles (top-right + bottom-left)
+- Fade-in animation: opacity 0→1, translateY 20→0, duration 900ms
+- Loading spinner (accent border, 26px) + “مدعوم بالذكاء الاصطناعي” text
+- useEffect: setTimeout 2600ms → navigate to Login
+
+-----
+
+### LoginScreen.jsx
+
+- Background: bg color (#FAFCFB)
+- Top section: primaryDark gradient, height 260, rounded bottom corners (40px)
+  - Center: ShieldCheck icon (38px) in frosted box + “وكيل” (34px bold) + subtitle
+- White card: margin-top -30, mx 20, radius 26, padding 26, shadow
+- “مرحباً بك 👋” title (23px, bold, right-aligned)
+- Subtitle: “سجّل دخولك لمتابعة مهامك” (textLight)
+- Phone input: +966 prefix badge (primary bg) + RTL TextInput
+- Password input: secureTextEntry + eye/eye-off toggle (left side = RTL visual right)
+- Both inputs: height 52, borderRadius 16, border changes to primary on focus
+- “دخول” button: full width, height 52, primary bg, shadow, arrow icon
+- “ليس لديك حساب؟ سجّل الآن” link (accentDark, underline)
+- On login: navigate to MainTabs (mock auth — no backend)
+
+-----
+
+### HomeScreen.jsx
+
+- Header: primaryDark gradient, rounded bottom (30px)
+  - Right: “مرحباً، الوكيل 👋” (22px bold, white) + Hijri+Gregorian date (Tajawal, 12px)
+  - Left: bell icon with red dot (3 notifications)
+- Stats row (inside header): 3 mini cards
+  - الغياب اليوم | المخالفات | المحاضر
+  - Each: count + trend arrow + icon in colored circle
+  - Background: rgba(white, 0.1), backdrop blur
+- AI insight banner (below header): accent border, Sparkles icon + alert text
+- “الإجراءات السريعة” section: 2×2 grid
+  - محضر بالصوت  → VoiceRecordModal  (AI badge, blue)
+  - تسجيل مخالفة → ViolationFlow     (AI badge, red)
+  - تقرير اليوم  → ReportModal       (AI badge, green)
+  - بحث عن طالب → StudentCardScreen  (purple)
+- “مهام الوكيل” list: 4 items (الحالات الصحية / القبول / المكافآت / رفع الشواهد)
+
+-----
+
+### StudentsScreen.jsx
+
+- Header: gradient, search bar inside
+- Import button (top right): opens Expo DocumentPicker → accepts .xlsx
+  - Parse with xlsx library → extract: الاسم، رقم السجل المدني، الصف، الشعبة، ولي الأمر، الجوال
+  - Arabic column header mapping (flexible — handles common variations)
+  - Bulk insert into SQLite students table
+  - Show success toast with count
+- Student list: FlatList, each row:
+  - Avatar circle (initials, color by first letter)
+  - Name (bold) + grade/section
+  - Attendance % badge (green/amber/red)
+  - Chevron → navigate to StudentCardScreen
+- Empty state: upload icon + “ارفع ملف Excel لاستيراد الطلاب”
+
+-----
+
+### StudentCardScreen.jsx (360° profile)
+
+- Header card: gradient, avatar (large circle), name, ID, grade
+- 3 stat chips: الحضور % | المخالفات | النقاط
+- AI behavior insight banner (Pro): Sparkles icon + analysis text
+  - If !isPro: ProGate wrapper
+- Recent events timeline:
+  - Fetched from records + violations tables for this student
+  - Each event: icon (color by type) + title + date
+- Floating action button (bottom right): “إضافة سجل” → RecordsScreen filtered for this student
+
+-----
+
+### RecordsScreen.jsx
+
+- Header: gradient, “سجلات وكيل شؤون الطلاب”, subtitle “١٥ سجلاً رسمياً”
+- Customize letterhead button: banner → SettingsScreen (letterhead tab)
+- Filter chips (RTL row): الكل | القبول والتسجيل | الحضور والمواظبة | الإعانات والرعاية | النشاط
+- 2-column grid: each card is a DocPreview (A4 thumbnail) + title + category badge
+- The 15 official registers exactly as listed in the ministry file:
+
+```
+1.  تحويل من مدارس تحفيظ القرآن والمعاهد العلمية   (و.ط.ع.ن 01-01)  cat: reg
+2.  استمارة البيانات الشخصية للطالب                 (و.ط.ع.ن 01-02)  cat: reg
+3.  تسليم المقررات الدراسية للطالب                   (و.ط.ع.ن 02-01)  cat: reg
+4.  سجل الطلاب المتأخرين صباحاً                      (و.ط.ع.ن 03-01)  cat: att
+5.  تحويل طالب متكرر الغياب للوكيل                   (و.ط.ع.ن 03-02)  cat: att
+6.  كشف حضور وغياب طلاب المدرسة                     (و.ط.ع.ن 03-03)  cat: att
+7.  استئذان الطلاب أثناء الدوام الرسمي               (و.ط.ع.ن 03-04)  cat: att
+8.  كشف الطلاب المستحقين للإعانة والمكافأة           (و.ط.ع.ن 04-01)  cat: ben
+9.  كشف الحالات المرضية في المدرسة                   (و.ط.ع.ن 04-01)  cat: ben
+10. إبلاغ عن حالة طالب                               (و.ط.ع.ن 04-02)  cat: ben
+11. تحويل طالب لوكيل شؤون الطلاب                    (و.ط.ع.ن 04-03)  cat: ben  ← DEEP
+12. البرامج الإرشادية المقدمة للطلاب                  (و.ط.ع.ن 04-04)  cat: ben
+13. التقرير الفصلي للتوجيه الطلابي                   (و.ط.ع.ن 04-05)  cat: ben
+14. حضور الطلاب لمجالات وجماعات النشاط               (و.ط.ع.ن 05-01)  cat: act
+15. موافقة ولي أمر على مشاركة ابنه في نشاط          (و.ط.ع.ن 05-02)  cat: act
+```
+
+- Tap any card → RecordDetailScreen (generic AI fill)
+- Tap card #11 → Form31Screen (full 4-party workflow)
+
+-----
+
+### RecordDetailScreen.jsx (generic)
+
+- Shows MoEHeader (reads from SettingsContext)
+- Shows form title pill + form code
+- Empty form lines (placeholder state)
+- “اكتب بالذكاء الاصطناعي” button (Pro only — ProGate)
+  - Calls Claude API with form context
+  - Streams response into form body
+- Approve button → updates status in SQLite
+- Export PDF (Pro) → expo-print
+- Share (Pro) → expo-sharing
+- Add to Evidence → EvidenceScreen
+
+-----
+
+### Form31Screen.jsx — نموذج (31) تحويل طالب — FULL IMPLEMENTATION
+
+7-step workflow. Each step is its own JSX block within this file.
+
+**Step 1 — بيانات التحويل (الوكيل يُدخلها نيابةً عن المعلم)**
+
+- Student selector: search field → picks from SQLite students
+- Teacher name: text input
+- Subject: text input
+- Period: number picker (1..8)
+- Reason checkboxes (exactly as in ministry form):
+  □ عدم أداء الواجب
+  □ مشاغبة
+  □ تأخر عن الحصة
+  □ ضعف دراسي
+  □ أخرى (with free text)
+- Problem clarification: multiline text (optional — AI completes it)
+- Primary button: “إرسال للذكاء لصياغة النموذج رسمياً”
+
+**Step 2 — AI Processing**
+
+- Spinner + “الذكاء يصيغ النص الرسمي…”
+- Calls Claude API with prompt:
+  “أكتب إيضاح مشكلة رسمية للنموذج 31 (تحويل طالب لوكيل شؤون الطلاب) بصياغة وزارة التعليم السعودية. الطالب: {name}، الصف: {grade}، المادة: {subject}، الأسباب: {reasons}. اكتب فقرة واحدة رسمية مختصرة لا تتجاوز ٤ أسطر.”
+- Saves result to SQLite records table (status: draft)
+
+**Step 3 — النموذج مُعَدّ بالذكاء**
+
+- Shows full MoEHeader
+- Shows: student info row / subject + period / date
+- Shows reasons (colored badge)
+- Shows AI-written clarification (accentBg, editable)
+- Teacher name + signature line
+
+**Step 4 — إجراء الوكيل**
+
+- Editable textarea for vice principal action
+- Deduct type selector: السلوك | المواظبة
+- Deduct points (auto-calculated by degree: 5/10/15/20)
+- Primary button: “اعتماد وإحالة للموجه الطلابي”
+- Saves to SQLite
+
+**Step 5 — متابعة الموجه الطلابي**
+
+- Step tracker: 1✓ 2✓ 3● 4○
+- Counselor response textarea
+- Recommendation: تثبيت الحسم | إلغاء الحسم
+- “إرسال لمسجّل المعلومات” button
+
+**Step 6 — مسجّل المعلومات — الحسم**
+
+- Step tracker: 1✓ 2✓ 3✓ 4●
+- Summary card: student / deduct type / points
+- “تأكيد الحسم وأرشفة النموذج” (green button)
+- Saves final status to SQLite
+
+**Step 7 — مكتمل ومؤرشف**
+
+- Success animation (green checkmark circle)
+- “اكتملت دورة النموذج — دوّر عبر ٤ أطراف”
+- Timeline of 4 parties + actions
+- Export PDF (Pro) | رفع كشاهد (Pro)
+
+-----
+
+### ReportsScreen.jsx
+
+- Report type cards: التقرير اليومي | الأسبوعي | تقرير الغياب | تقرير المخالفات
+- Each card: icon + title + status badge + download button (Pro)
+- “توليد بالذكاء” (Pro): calls Claude API with aggregated SQLite data
+- AI output: narrative summary + stats + recommendations
+- Export as PDF or Excel (Pro)
+
+-----
+
+### EvidenceScreen.jsx (رفع الشواهد — Pro)
+
+- ProGate wrapping entire screen
+- Categories: إنجازات | دورات تدريبية | أعمال إدارية | أخرى
+- Upload button: Expo ImagePicker or DocumentPicker
+- Each evidence card: thumbnail/icon + title + category + date
+- Add description + tags
+- Export all evidence as ZIP (sharing)
+
+-----
+
+### SettingsScreen.jsx
+
+- School information section (updates SettingsContext → all forms update instantly):
+  - اسم المدرسة (text input)
+  - الإدارة العامة للتعليم (text input)
+  - المرحلة الدراسية (picker: ابتدائية / متوسطة / ثانوية)
+  - شعار المدرسة: ImagePicker → stored URI in SQLite
+- Staff names section:
+  - اسم الوكيل (text input)
+  - اسم المدير (text input)
+  - اسم المساعد الإداري (text input)
+  - اسم الموجه الطلابي (text input)
+- Letterhead preview: live MoEHeader preview updates as user types
+- Account section:
+  - حالة الاشتراك: مجاني / Pro (badge)
+  - “ترقية إلى Pro” → SubscriptionScreen
+- Data section:
+  - “تصدير نسخة احتياطية” → exports encrypted JSON file
+  - “استيراد نسخة احتياطية”
+  - “حذف جميع البيانات” (destructive, confirmation required)
+- Legal:
+  - “سياسة الخصوصية” → PrivacyScreen
+  - “شروط الاستخدام”
+- App version at bottom
+
+-----
+
+### SubscriptionScreen.jsx (Freemium)
+
+Free tier features list:
+
+- ✅ السجلات الـ١٥ الرسمية (عرض فقط)
+- ✅ قاعدة بيانات الطلاب (٢٠ طالب كحد أقصى)
+- ✅ التقارير النصية الأساسية
+- ✅ إعدادات المدرسة والكليشة
+- ❌ الذكاء الاصطناعي
+- ❌ تصدير PDF
+- ❌ رفع الشواهد
+- ❌ محضر الصوت
+- ❌ طلاب غير محدودين
+
+Pro tier (٢٩ ريال/شهر or ٢٩٩ ريال/سنة):
+
+- ✅ كل ميزات المجاني
+- ✅ ذكاء اصطناعي في جميع النماذج
+- ✅ تصدير PDF لأي سجل بالكليشة الرسمية
+- ✅ محضر بالصوت (تحويل صوت → نص رسمي)
+- ✅ قسم رفع الشواهد كامل
+- ✅ طلاب غير محدودين
+- ✅ تقارير متقدمة + Excel
+- ✅ نسخ احتياطية مشفّرة
+- ✅ دعم أولوي
+
+UI:
+
+- Toggle: شهري / سنوي (سنوي يُظهر “وفّر ١٤٪”)
+- Feature comparison cards (free vs pro)
+- “ابدأ Pro مجاناً لمدة ١٤ يوماً” CTA button
+- On activate (mock): sets is_pro=1 in SQLite → ProContext updates → all ProGates unlock
+
+-----
+
+### PrivacyScreen.jsx
+
+Display this full Arabic privacy policy:
+
+**عنوان:** سياسة الخصوصية — تطبيق وكيل
+
+**أقسام (render as styled cards):**
+
+١. **لا نجمع أي بيانات**
+جميع بياناتك مخزّنة محلياً على جهازك فقط. لا نرسل أي معلومة إلى أي خادم أو طرف ثالث. بيانات الطلاب لا تغادر جوالك أبداً.
+
+٢. **البيانات المخزّنة محلياً**
+يخزّن التطبيق محلياً: بيانات الطلاب، السجلات والمحاضر، بيانات المدرسة والوكيل، الشواهد المرفوعة. لا يوجد حساب مستخدم ولا تسجيل. جميع البيانات داخل قاعدة بيانات SQLite على جهازك فقط.
+
+٣. **الذكاء الاصطناعي (مستخدمو Pro)**
+عند استخدام ميزات الذكاء الاصطناعي، يُرسل نص قصير إلى واجهة برمجة Claude API لإنشاء المحتوى. لا تُرسل بيانات الطالب الشخصية (الاسم، رقم الهوية) مع هذه الطلبات. يُعالَج النص ولا يُخزَّن من قِبل مزود الخدمة.
+
+٤. **التوافق مع اللوائح**
+التطبيق متوافق مع: لائحة حماية البيانات الشخصية السعودية (PDPL)، توجيهات هيئة البيانات والذكاء الاصطناعي (SDAIA)، وتوجيهات وزارة التعليم بشأن الذكاء الاصطناعي الصادرة ١٤٤٦هـ.
+
+٥. **حقوقك**
+يمكنك في أي وقت: تصدير جميع بياناتك، حذف جميع بياناتك نهائياً من الإعدادات، إلغاء التطبيق دون فقدان أي شيء من طرفنا.
+
+٦. **التواصل**
+للاستفسارات: [بريد التواصل]
+
+آخر تحديث: محرم ١٤٤٧هـ
+
+-----
+
+## SECTION 9 — AI HOOK (Pro only)
+
+### useAI.js
+
+```js
+export function useAI() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function generate(prompt, systemPrompt) {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt || 'أنت مساعد وكيل شؤون الطلاب في مدرسة سعودية. تكتب بالعربية الفصحى بأسلوب وزارة التعليم السعودية. كن موجزاً ورسمياً.',
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      const data = await response.json();
+      return data.content?.[0]?.text || '';
+    } catch (err) {
+      setError(err.message);
+      return '';
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { generate, loading, error };
+}
+```
+
+-----
+
+## SECTION 10 — QUALITY ENFORCEMENT RULES
+
+Before writing a single line of code, confirm these:
+
+1. **RTL**: `I18nManager.forceRTL(true)` in App.jsx before NavigationContainer
+1. **Safe areas**: every screen wrapped in `<SafeAreaView>`
+1. **No hardcoded names**: school name, vice principal name etc. ALWAYS come from SettingsContext
+1. **StyleSheet.create()**: for all styles. No inline objects except dynamic values
+1. **Arabic numerals**: use `.toLocaleString('ar-SA')` for all displayed numbers
+1. **Hijri date**: `new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {weekday:'long', year:'numeric', month:'long', day:'numeric'}).format(new Date())`
+1. **Pro features**: always wrapped in `<ProGate>` — never show Pro UI to free users without the gate
+1. **SQLite init**: called once in App.jsx before rendering, with `await`
+1. **Fonts**: loaded with `expo-font` hook, splash screen held until fonts ready
+1. **No English**: run a mental check — would a Saudi vice principal ever see an English word? If yes, fix it.
+
+-----
+
+## SECTION 11 — MODULAR ARCHITECTURE REQUIREMENT
+
+The app MUST be built so that adding new features later requires:
+
+- Adding a new file in /screens/
+- Adding one line in AppNavigator.jsx
+- Adding one row to the SQLite schema if needed
+- ZERO changes to existing screens
+
+This means:
+
+- No business logic inside screens — extract to hooks
+- No hardcoded data — everything from SQLite or context
+- Navigation by screen name strings only
+- ProGate is a wrapper component, not inline conditionals
+
+-----
+
+## OUTPUT INSTRUCTION
+
+Output every file in full, in this exact order:
+
+1. app.json
+1. package.json
+1. src/theme/colors.js
+1. src/theme/typography.js
+1. src/db/database.js
+1. src/db/queries.js
+1. src/context/SettingsContext.jsx
+1. src/context/ProContext.jsx
+1. src/hooks/useFonts.js
+1. src/hooks/useAI.js
+1. src/components/MoEHeader.jsx
+1. src/components/Card.jsx
+1. src/components/ProGate.jsx
+1. src/components/TabBar.jsx
+1. src/navigation/AppNavigator.jsx
+1. src/screens/SplashScreen.jsx
+1. src/screens/LoginScreen.jsx
+1. src/screens/HomeScreen.jsx
+1. src/screens/StudentsScreen.jsx
+1. src/screens/StudentCardScreen.jsx
+1. src/screens/RecordsScreen.jsx
+1. src/screens/RecordDetailScreen.jsx
+1. src/screens/Form31Screen.jsx
+1. src/screens/ReportsScreen.jsx
+1. src/screens/EvidenceScreen.jsx
+1. src/screens/SettingsScreen.jsx
+1. src/screens/SubscriptionScreen.jsx
+1. src/screens/PrivacyScreen.jsx
+1. App.jsx
+
+Do not stop until all 29 files are complete.
+Do not add any files not listed here.
+Do not ask clarifying questions — all requirements are above.
+
+-----
+
+## SECTION 12 — ALL 15 FORM FIELD SPECIFICATIONS
+
+Each form object below defines exactly what fields to render in RecordDetailScreen.
+Store field values as JSON in `records.body_json`. Render fields dynamically based on `form_number`.
+
+Use this TypeScript-like schema for each field:
+
+```
+{ key, label, type, required, options?, placeholder?, rows? }
+type = 'text' | 'textarea' | 'date' | 'select' | 'number' | 'phone' | 'checkbox' | 'signature'
+```
+
+-----
+
+### FORM 1 — تحويل من مدارس تحفيظ القرآن والمعاهد العلمية
+
+**رمز:** و.ط.ع.ن 01-01 | **المشرف:** المساعد الإداري
+
+**Section أولاً — بيانات عامة:**
+
+```json
+[
+  { "key": "student_name",      "label": "الاسم رباعياً",              "type": "text",     "required": true },
+  { "key": "nationality",       "label": "الجنسية",                    "type": "text",     "required": true },
+  { "key": "birth_date",        "label": "تاريخ الميلاد",              "type": "date",     "required": true },
+  { "key": "grade",             "label": "الصف الدراسي",               "type": "text",     "required": true },
+  { "key": "last_certificate",  "label": "آخر شهادة دراسية حصل عليها", "type": "text",     "required": true },
+  { "key": "cert_source",       "label": "مصدرها",                     "type": "text",     "required": false },
+  { "key": "cert_date",         "label": "تاريخ الحصول عليها",         "type": "date",     "required": false },
+  { "key": "transfer_from",     "label": "نقل من",                     "type": "text",     "required": true },
+  { "key": "specialization",    "label": "تخصص التعليم العام",          "type": "text",     "required": false },
+  { "key": "study_type",        "label": "نوع الدراسة المطلوبة",        "type": "select",   "required": true,
+    "options": ["نهاري", "ليلي", "منازل"] }
+]
+```
+
+**Section ثانياً — التحصيل الدراسي:**
+
+```json
+[
+  { "key": "repeat_years",      "label": "عدد سنوات الإعادة في الصف الحالي", "type": "number", "required": false },
+  { "key": "interruption_years","label": "عدد سنوات الانقطاع من الدراسة",    "type": "number", "required": false },
+  { "key": "interruption_reason","label": "أسباب الانقطاع",                  "type": "textarea","required": false, "rows": 2 },
+  { "key": "pass_grade1",       "label": "ناجح من الصف",                      "type": "text",   "required": false },
+  { "key": "pass_year1",        "label": "في العام الدراسي",                  "type": "text",   "required": false },
+  { "key": "pass_rating1",      "label": "تقديره العام",                       "type": "text",   "required": false },
+  { "key": "pass_grade2",       "label": "ناجح من الصف (2)",                  "type": "text",   "required": false },
+  { "key": "pass_year2",        "label": "في العام الدراسي (2)",               "type": "text",   "required": false },
+  { "key": "pass_rating2",      "label": "تقديره العام (2)",                   "type": "text",   "required": false },
+  { "key": "transfer_ref_no",   "label": "رقم التحويل لإدارة التعليم",         "type": "text",   "required": false },
+  { "key": "transfer_ref_date", "label": "تاريخ التحويل",                      "type": "date",   "required": false },
+  { "key": "principal_name",    "label": "اسم مدير المدرسة",                   "type": "text",   "required": true },
+  { "key": "principal_sig",     "label": "التوقيع",                            "type": "signature","required": true }
+]
+```
+
+**Section ثالثاً — دراسة وضع الطالب (وكيل شؤون الطلاب):**
+
+```json
+[
+  { "key": "student_reasons",   "label": "الأسباب التي أبداها الطالب للتحويل", "type": "textarea","required": true,  "rows": 2 },
+  { "key": "real_motives",      "label": "التعرف على الدوافع الحقيقية",         "type": "textarea","required": true,  "rows": 2 },
+  { "key": "guardian_approval", "label": "مدى موافقة ولي أمر الطالب",           "type": "textarea","required": true,  "rows": 1 },
+  { "key": "employer_approval", "label": "مدى موافقة جهة عمله (إن وجدت)",      "type": "textarea","required": false, "rows": 1 },
+  { "key": "counseling_result", "label": "نتائج الخدمات الإرشادية",             "type": "select", "required": true,
+    "options": ["تم إقناع الطالب ويواصل دراسته الحالية", "لم يقتنع الطالب وهو يرغب في التحويل"] },
+  { "key": "committee_view",    "label": "مرئيات اللجنة",                       "type": "select", "required": true,
+    "options": ["يسمح له بالتحويل", "لا يسمح له"] },
+  { "key": "student_services_ref","label": "رقم الإحالة لقسم خدمات الطلاب",    "type": "text",   "required": false },
+  { "key": "director_general_view","label": "مرئيات مدير عام التعليم بمنطقة",  "type": "textarea","required": false, "rows": 2 }
+]
+```
+
+-----
+
+### FORM 2 — استمارة البيانات الشخصية للطالب
+
+**رمز:** و.ط.ع.ن 01-02 | **المشرف:** المساعد الإداري
+
+```json
+[
+  { "key": "stage",          "label": "المرحلة الدراسية",          "type": "text",   "required": true },
+  { "key": "grade",          "label": "الصف الدراسي",              "type": "text",   "required": true },
+  { "key": "section",        "label": "الفصل",                     "type": "text",   "required": true },
+  { "key": "nationality",    "label": "الجنسية",                   "type": "text",   "required": true },
+  { "key": "national_id",    "label": "رقم السجل المدني / الإقامة","type": "text",   "required": true },
+  { "key": "student_number", "label": "رقم الطالب (خاص بالمدرسة)", "type": "text",   "required": false },
+  { "key": "id_date",        "label": "تاريخ الهوية",              "type": "date",   "required": false },
+  { "key": "fname",          "label": "الاسم الأول",               "type": "text",   "required": true },
+  { "key": "father_name",    "label": "اسم الأب",                  "type": "text",   "required": true },
+  { "key": "grandfather",    "label": "اسم الجد",                  "type": "text",   "required": true },
+  { "key": "family_name",    "label": "العائلة (اللقب)",           "type": "text",   "required": true },
+  { "key": "passport_no",    "label": "رقم جواز السفر",            "type": "text",   "required": false },
+  { "key": "birth_date",     "label": "تاريخ الميلاد",             "type": "date",   "required": true },
+  { "key": "birth_place",    "label": "مكان الميلاد / المدينة",    "type": "text",   "required": false },
+  { "key": "birth_country",  "label": "الدولة",                    "type": "text",   "required": false },
+  { "key": "blood_type",     "label": "فئة الدم",                  "type": "select", "required": false,
+    "options": ["A+","A-","B+","B-","AB+","AB-","O+","O-"] },
+  { "key": "housing_type",   "label": "ملكية السكن",               "type": "select", "required": false,
+    "options": ["ملك","إيجار","مجاني"] },
+  { "key": "admin_region",   "label": "المنطقة الإدارية",          "type": "text",   "required": false },
+  { "key": "city",           "label": "المدينة",                   "type": "text",   "required": false },
+  { "key": "neighborhood",   "label": "الحي",                      "type": "text",   "required": false },
+  { "key": "main_street",    "label": "الشارع الرئيسي",            "type": "text",   "required": false },
+  { "key": "sub_street",     "label": "الشارع الفرعي",             "type": "text",   "required": false },
+  { "key": "house_number",   "label": "رقم المنزل",                "type": "text",   "required": false },
+  { "key": "postal_code",    "label": "الرمز البريدي",             "type": "text",   "required": false },
+  { "key": "po_box",         "label": "صندوق البريد",              "type": "text",   "required": false },
+  { "key": "email",          "label": "البريد الإلكتروني",         "type": "text",   "required": false },
+  { "key": "guardian_name",  "label": "اسم ولي الأمر",             "type": "text",   "required": true },
+  { "key": "guardian_relation","label":"صلة القرابة",              "type": "text",   "required": true },
+  { "key": "guardian_nationality","label":"جنسية ولي الأمر",       "type": "text",   "required": false },
+  { "key": "guardian_id_type","label": "نوع الهوية",               "type": "text",   "required": false },
+  { "key": "guardian_id_date","label": "تاريخ الهوية",             "type": "date",   "required": false },
+  { "key": "guardian_id_source","label":"مصدرها",                  "type": "text",   "required": false },
+  { "key": "guardian_id_expiry","label":"نهايتها",                 "type": "date",   "required": false },
+  { "key": "home_phone",     "label": "رقم هاتف المنزل",           "type": "phone",  "required": false },
+  { "key": "mobile",         "label": "رقم الهاتف الجوال",         "type": "phone",  "required": true },
+  { "key": "work_phone",     "label": "رقم هاتف العمل",            "type": "phone",  "required": false },
+  { "key": "relative1_name", "label": "اسم قريب للطالب (1)",       "type": "text",   "required": false },
+  { "key": "relative1_phone","label": "هاتف القريب (1)",           "type": "phone",  "required": false },
+  { "key": "relative1_addr", "label": "عنوان القريب (1)",          "type": "text",   "required": false },
+  { "key": "relative2_name", "label": "اسم قريب للطالب (2)",       "type": "text",   "required": false },
+  { "key": "relative2_phone","label": "هاتف القريب (2)",           "type": "phone",  "required": false },
+  { "key": "relative2_addr", "label": "عنوان القريب (2)",          "type": "text",   "required": false }
+]
+```
+
+-----
+
+### FORM 3 — كشف تسليم المقررات الدراسية للطالب
+
+**رمز:** و.ط.ع.ن 02-01 | **المشرف:** المساعد الإداري
+**نوع:** جدول متكرر (FlatList of rows)
+
+```json
+{
+  "header_fields": [
+    { "key": "grade",    "label": "الصف",   "type": "text" },
+    { "key": "section",  "label": "الفصل",  "type": "text" },
+    { "key": "day",      "label": "اليوم",  "type": "text" },
+    { "key": "date",     "label": "التاريخ","type": "date" }
+  ],
+  "row_fields": [
+    { "key": "student_name",    "label": "اسم الطالب",                "type": "text" },
+    { "key": "book_pledge",     "label": "وثيقة المحافظة على الكتب",  "type": "text" },
+    { "key": "receive_sig",     "label": "توقيع استلام الكتب",        "type": "signature" },
+    { "key": "return_done",     "label": "تم استلامها",               "type": "checkbox" },
+    { "key": "return_pending",  "label": "لم يستلم",                  "type": "checkbox" },
+    { "key": "return_sig",      "label": "توقيع نهاية الفصل",         "type": "signature" }
+  ],
+  "footer_fields": [
+    { "key": "unreturned_books","label": "الكتب غير المسلمة",         "type": "textarea" },
+    { "key": "responsible_name","label": "اسم المسؤول",               "type": "text" },
+    { "key": "responsible_sig", "label": "التوقيع",                   "type": "signature" }
+  ]
+}
+```
+
+-----
+
+### FORM 4 — كشف الطلاب المتأخرين صباحاً
+
+**رمز:** و.ط.ع.ن 03-01 | **المشرف:** المساعد الإداري
+**نوع:** جدول يومي
+
+```json
+{
+  "header_fields": [
+    { "key": "day",  "label": "اليوم",  "type": "text" },
+    { "key": "date", "label": "التاريخ","type": "date" }
+  ],
+  "row_fields": [
+    { "key": "student_name",  "label": "اسم الطالب",       "type": "text" },
+    { "key": "grade_section", "label": "الصف / الشعبة",    "type": "text" },
+    { "key": "delay_amount",  "label": "مقدار التأخر",      "type": "text" },
+    { "key": "delay_reason",  "label": "أسباب التأخير",    "type": "text" },
+    { "key": "student_sig",   "label": "توقيع الطالب",     "type": "signature" }
+  ],
+  "footer_fields": [
+    { "key": "responsible_name","label": "اسم المسؤول",    "type": "text" },
+    { "key": "responsible_sig", "label": "التوقيع",        "type": "signature" }
+  ]
+}
+```
+
+-----
+
+### FORM 5 — تحويل طالب متكرر الغياب للوكيل
+
+**رمز:** و.ط.ع.ن 03-02 | **المشرف:** المساعد الإداري
+**نوع:** جدول + إجراء متعدد الأطراف
+
+```json
+{
+  "header_fields": [
+    { "key": "semester", "label": "الفصل الدراسي", "type": "text" }
+  ],
+  "row_fields": [
+    { "key": "student_name",   "label": "اسم الطالب",      "type": "text" },
+    { "key": "grade",          "label": "الصف",             "type": "text" },
+    { "key": "transfer_date",  "label": "تاريخ التحويل",   "type": "date" },
+    { "key": "period",         "label": "الحصة",            "type": "text" }
+  ],
+  "action_fields": [
+    { "key": "referral_date",  "label": "تاريخ الإحالة للوكيل",               "type": "date" },
+    { "key": "end_date",       "label": "تم إنهاء الموقف بتاريخ",             "type": "date" },
+    { "key": "deduct_type",    "label": "حسم من درجات",                        "type": "select",
+      "options": ["السلوك","المواظبة"] },
+    { "key": "deduct_points",  "label": "عدد الدرجات",                         "type": "number" },
+    { "key": "deduct_date",    "label": "تاريخ الحسم",                         "type": "date" },
+    { "key": "counselor_followup","label":"آمل متابعة الطالب خلال الفترة القادمة","type":"textarea","rows":2},
+    { "key": "counselor_recommendation","label":"رأي الموجه في تثبيت / إلغاء الحسم","type":"select",
+      "options": ["نرى تثبيت درجة الحسم لعدم استجابة الطالب","نرى إلغاء حسم الدرجة لتحسن مستوى الطالب"] }
+  ]
+}
+```
+
+-----
+
+### FORM 6 — كشف حضور وغياب طلاب المدرسة
+
+**رمز:** و.ط.ع.ن 03-03 | **المشرف:** المساعد الإداري
+**نوع:** جدول يومي مفصّل
+
+```json
+{
+  "header_fields": [
+    { "key": "grade",   "label": "الصف",   "type": "text" },
+    { "key": "day",     "label": "اليوم",  "type": "text" },
+    { "key": "date",    "label": "التاريخ","type": "date" }
+  ],
+  "row_fields": [
+    { "key": "section",         "label": "الفصل",              "type": "text" },
+    { "key": "enrolled",        "label": "المسجّلون",           "type": "number" },
+    { "key": "present",         "label": "الحضور",              "type": "number" },
+    { "key": "absent",          "label": "الغياب",              "type": "number" },
+    { "key": "student_name",    "label": "الاسم",               "type": "text" },
+    { "key": "absence_excused", "label": "بعذر",                "type": "checkbox" },
+    { "key": "absence_no_excuse","label": "بدون عذر",           "type": "checkbox" },
+    { "key": "phone",           "label": "رقم الهاتف",          "type": "phone" },
+    { "key": "contact_time",    "label": "الزمن",               "type": "text" },
+    { "key": "contact_answer",  "label": "المجيب",              "type": "text" },
+    { "key": "absence_reason",  "label": "سبب الغياب",          "type": "text" },
+    { "key": "teacher_sig",     "label": "توقيع المعلم",        "type": "signature" }
+  ],
+  "footer_fields": [
+    { "key": "responsible_name","label": "اسم المسؤول",         "type": "text" },
+    { "key": "responsible_sig", "label": "التوقيع",             "type": "signature" }
+  ]
+}
+```
+
+-----
+
+### FORM 7 — استئذان الطلاب أثناء الدوام الرسمي
+
+**رمز:** و.ط.ع.ن 03-04 | **المشرف:** المساعد الإداري
+**ملاحظة:** لا بد من حضور ولي الأمر شخصياً
+
+```json
+{
+  "row_fields": [
+    { "key": "student_name",   "label": "اسم الطالب",         "type": "text" },
+    { "key": "section",        "label": "الفصل",              "type": "text" },
+    { "key": "date",           "label": "التاريخ",            "type": "date" },
+    { "key": "exit_hour",      "label": "وقت الخروج (ساعة)", "type": "number" },
+    { "key": "exit_minute",    "label": "وقت الخروج (دقيقة)","type": "number" },
+    { "key": "leave_reason",   "label": "سبب الاستئذان",     "type": "text" },
+    { "key": "sig",            "label": "التوقيع",            "type": "signature" },
+    { "key": "guardian_name",  "label": "اسم ولي الأمر",      "type": "text" }
+  ],
+  "note": "ملاحظة: لا بد من حضور ولي الأمر في حال خروج الطالب أثناء الدوام الرسمي، خلاف ذلك يمنع خروج الطالب من المدرسة حسب لوائح وزارة التعليم"
+}
+```
+
+-----
+
+### FORM 8 — كشف الطلاب المستحقين للإعانة والمكافأة
+
+**رمز:** و.ط.ع.ن 04-01 | **المشرف:** الموجه الطلابي
+**نوع:** جدول مالي
+
+```json
+{
+  "header_fields": [
+    { "key": "semester", "label": "الفصل الدراسي", "type": "text" }
+  ],
+  "row_fields": [
+    { "key": "student_name",   "label": "اسم الطالب",          "type": "text" },
+    { "key": "national_id",    "label": "رقم السجل المدني",    "type": "text" },
+    { "key": "grade",          "label": "الصف",                "type": "text" },
+    { "key": "aid_type",       "label": "نوع الإعانة",         "type": "select",
+      "options": ["مكافأة","إعانة اجتماعية","إعانة مدرسية"] },
+    { "key": "date",           "label": "التاريخ",             "type": "date" },
+    { "key": "student_sig",    "label": "توقيع الطالب",        "type": "signature" },
+    { "key": "bank_account",   "label": "رقم الحساب البنكي",   "type": "text" }
+  ]
+}
+```
+
+-----
+
+### FORM 9 — كشف الحالات المرضية في المدرسة
+
+**رمز:** و.ط.ع.ن 04-01 | **المشرف:** الموجه الصحي
+**نوع:** بطاقات متكررة (كل طالب بطاقة منفصلة)
+
+```json
+{
+  "card_fields": [
+    { "key": "student_name",    "label": "اسم الطالب",                         "type": "text",     "required": true },
+    { "key": "grade",           "label": "الصف",                               "type": "text",     "required": true },
+    { "key": "home_phone",      "label": "هاتف المنزل",                        "type": "phone",    "required": false },
+    { "key": "work_phone",      "label": "هاتف العمل",                         "type": "phone",    "required": false },
+    { "key": "mobile",          "label": "الجوال",                             "type": "phone",    "required": true },
+    { "key": "birth_year",      "label": "تاريخ الميلاد",                      "type": "date",     "required": false },
+    { "key": "condition_desc",  "label": "وصف الحالة المرضية",                 "type": "textarea", "required": true,  "rows": 3 },
+    { "key": "required_action", "label": "الإجراءات المطلوبة عند وقوع الحالة", "type": "textarea", "required": true,  "rows": 2 },
+    { "key": "recommendations", "label": "التوصيات",                           "type": "textarea", "required": false, "rows": 2 }
+  ]
+}
+```
+
+-----
+
+### FORM 10 — إبلاغ عن حالة طالب
+
+**رمز:** و.ط.ع.ن 04-02 | **المشرف:** الموجه الطلابي/الصحي
+**نوع:** رسالة رسمية + جدول
+
+```json
+{
+  "header_fields": [
+    { "key": "addressee", "label": "المكرم الأستاذ", "type": "text" }
+  ],
+  "row_fields": [
+    { "key": "student_name",    "label": "اسم الطالب",                         "type": "text" },
+    { "key": "grade",           "label": "الصف",                               "type": "text" },
+    { "key": "condition_desc",  "label": "وصف الحالة",                         "type": "textarea", "rows": 2 },
+    { "key": "required_action", "label": "الإجراء المطلوب عند وقوع الحالة",   "type": "textarea", "rows": 2 },
+    { "key": "recommendations", "label": "التوصيات",                           "type": "textarea", "rows": 1 }
+  ],
+  "footer_fields": [
+    { "key": "counselor_name",  "label": "الموجه الطلابي",  "type": "text" },
+    { "key": "principal_name",  "label": "مدير المدرسة",    "type": "text" }
+  ]
+}
+```
+
+-----
+
+### FORM 11 — تحويل طالب لوكيل شؤون الطلاب ← ALREADY IMPLEMENTED IN Form31Screen.jsx
+
+**رمز:** و.ط.ع.ن 04-03 | See Section 8 (Form31Screen) for full 7-step implementation.
+
+-----
+
+### FORM 12 — البرامج الإرشادية المقدمة للطلاب
+
+**رمز:** و.ط.ع.ن 04-04 | **المشرف:** الموجه الطلابي
+**نوع:** جدول سنوي
+
+```json
+{
+  "header_fields": [
+    { "key": "academic_year", "label": "العام الدراسي", "type": "text" }
+  ],
+  "row_fields": [
+    { "key": "program_name",   "label": "اسم البرنامج",      "type": "text" },
+    { "key": "exec_date",      "label": "تاريخ التنفيذ",     "type": "date" },
+    { "key": "occasion",       "label": "المناسبة",          "type": "text" },
+    { "key": "beneficiaries",  "label": "ع / المستفيدين",   "type": "number" }
+  ],
+  "footer_fields": [
+    { "key": "learning_center_admin", "label": "أمين مركز مصادر التعلم", "type": "text" },
+    { "key": "admin_sig",             "label": "التوقيع",                 "type": "signature" }
+  ]
+}
+```
+
+-----
+
+### FORM 13 — التقرير الفصلي للتوجيه الطلابي
+
+**رمز:** و.ط.ع.ن 04-05 | **المشرف:** الموجه الطلابي
+**نوع:** تقرير متعدد الأقسام
+
+```json
+{
+  "header_fields": [
+    { "key": "month",        "label": "الشهر",          "type": "text" },
+    { "key": "date",         "label": "التاريخ",        "type": "date" }
+  ],
+  "sections": [
+    {
+      "key": "repeating_students",
+      "label": "رعاية الطلاب المعيدين",
+      "fields": [
+        { "key": "count",          "label": "عدد الطلاب",        "type": "number" },
+        { "key": "programs",       "label": "البرامج المنفذة",   "type": "textarea", "rows": 2 },
+        { "key": "beneficiaries",  "label": "عدد المستفيدين",    "type": "number" },
+        { "key": "response",       "label": "مدى الاستجابة",     "type": "text" },
+        { "key": "difficulties",   "label": "الصعوبات التي حدثت","type": "textarea", "rows": 2 },
+        { "key": "suggestions",    "label": "المقترحات",          "type": "textarea", "rows": 2 }
+      ]
+    },
+    {
+      "key": "weak_students",
+      "label": "رعاية الطلاب المتأخرين دراسياً",
+      "fields": ["count","programs","beneficiaries","response","difficulties","suggestions"]
+    },
+    {
+      "key": "excellent_students",
+      "label": "رعاية الطلاب المتفوقين",
+      "fields": ["count","programs","beneficiaries","response","difficulties","suggestions"]
+    },
+    {
+      "key": "absence_cases",
+      "label": "حالات التأخر والغياب",
+      "fields": ["count","programs","beneficiaries","response","difficulties","suggestions"]
+    },
+    {
+      "key": "behavior_cases",
+      "label": "الحالات السلوكية",
+      "fields": ["count","programs","beneficiaries","response","difficulties","suggestions"]
+    },
+    {
+      "key": "awareness_programs",
+      "label": "البرامج والنشرات التوعوية",
+      "fields": ["count","programs","beneficiaries","response","difficulties","suggestions"]
+    }
+  ],
+  "footer_fields": [
+    { "key": "counselor_name", "label": "اسم الموجه الطلابي", "type": "text" },
+    { "key": "counselor_sig",  "label": "التوقيع",             "type": "signature" },
+    { "key": "date",           "label": "التاريخ",             "type": "date" }
+  ]
+}
+```
+
+-----
+
+### FORM 14 — حضور الطلاب لمجالات وجماعات النشاط
+
+**رمز:** و.ط.ع.ن 05-01 | **المشرف:** رائد النشاط
+**نوع:** جدول أسبوعي
+
+```json
+{
+  "header_fields": [
+    { "key": "academic_year",  "label": "العام الدراسي",           "type": "text" },
+    { "key": "semester",       "label": "الفصل الدراسي",           "type": "text" },
+    { "key": "activity_name",  "label": "اسم المجال / الجماعة",    "type": "text" },
+    { "key": "activity_supervisor","label":"مسؤول النشاط",         "type": "text" },
+    { "key": "supervisor_name","label": "المشرف",                  "type": "text" },
+    { "key": "location",       "label": "المقر",                   "type": "text" },
+    { "key": "week_from",      "label": "الأسبوع من",              "type": "date" },
+    { "key": "week_to",        "label": "إلى",                     "type": "date" }
+  ],
+  "row_fields": [
+    { "key": "student_name",   "label": "اسم الطالب",              "type": "text" },
+    { "key": "grade",          "label": "الصف",                    "type": "text" },
+    { "key": "sun_present",    "label": "الأحد ح",                 "type": "checkbox" },
+    { "key": "sun_absent",     "label": "الأحد غ",                 "type": "checkbox" },
+    { "key": "mon_present",    "label": "الاثنين ح",               "type": "checkbox" },
+    { "key": "mon_absent",     "label": "الاثنين غ",               "type": "checkbox" },
+    { "key": "tue_present",    "label": "الثلاثاء ح",              "type": "checkbox" },
+    { "key": "tue_absent",     "label": "الثلاثاء غ",              "type": "checkbox" },
+    { "key": "wed_present",    "label": "الأربعاء ح",              "type": "checkbox" },
+    { "key": "wed_absent",     "label": "الأربعاء غ",              "type": "checkbox" },
+    { "key": "thu_present",    "label": "الخميس ح",                "type": "checkbox" },
+    { "key": "thu_absent",     "label": "الخميس غ",                "type": "checkbox" },
+    { "key": "notes",          "label": "ملحوظات",                 "type": "text" }
+  ],
+  "footer_fields": [
+    { "key": "activity_supervisor_name","label":"مسؤول النشاط",    "type": "text" },
+    { "key": "activity_supervisor_sig", "label":"التوقيع",         "type": "signature" },
+    { "key": "activity_leader_name",    "label":"رائد النشاط",     "type": "text" },
+    { "key": "activity_leader_sig",     "label":"التوقيع",         "type": "signature" }
+  ]
+}
+```
+
+-----
+
+### FORM 15 — موافقة ولي أمر على مشاركة ابنه في نشاط مدرسي
+
+**رمز:** و.ط.ع.ن 05-02 | **المشرف:** رائد النشاط
+**نوع:** خطاب + رد ولي الأمر
+
+```json
+{
+  "header_fields": [
+    { "key": "academic_year",   "label": "العام الدراسي",     "type": "text" },
+    { "key": "semester",        "label": "الفصل الدراسي",     "type": "text" },
+    { "key": "guardian_name",   "label": "المكرم ولي الأمر",  "type": "text" }
+  ],
+  "activity_fields": [
+    { "key": "activity_type",   "label": "نوع النشاط",        "type": "select",
+      "options": ["رحلة","زيارة","مشاركة","أخرى"] },
+    { "key": "activity_other",  "label": "أخرى (تذكر)",       "type": "text" },
+    { "key": "activity_day",    "label": "يوم النشاط",        "type": "text" },
+    { "key": "activity_date",   "label": "تاريخ النشاط",      "type": "date" },
+    { "key": "start_time",      "label": "من الساعة",         "type": "text" },
+    { "key": "end_time",        "label": "حتى الساعة",        "type": "text" },
+    { "key": "student_name",    "label": "اسم الطالب المرشَّح","type": "text" }
+  ],
+  "guardian_response_fields": [
+    { "key": "guardian_approval","label": "رأي ولي الأمر",   "type": "select",
+      "options": ["موافق","غير موافق"] },
+    { "key": "guardian_name_sig","label": "اسم ولي الأمر",    "type": "text" },
+    { "key": "guardian_sig",     "label": "التوقيع",          "type": "signature" }
+  ],
+  "note": "يجب إعادة هذا الخطاب للمدرسة بعد اطلاع وتوقيع ولي الأمر"
+}
+```
+
+-----
+
+## SECTION 13 — DYNAMIC FORM RENDERER INSTRUCTION
+
+In `RecordDetailScreen.jsx`, build a `DynamicFormRenderer` component:
+
+```jsx
+function DynamicFormRenderer({ formNumber, bodyJson, onChange }) {
+  // 1. Import FORM_SCHEMAS object that maps formNumber → field specs
+  // 2. For each field in schema, render the appropriate input:
+  //    - text/phone/number → TextInput
+  //    - textarea → TextInput multiline with rows
+  //    - date → DatePicker or text input with HH/MM/YYYY hint
+  //    - select → Modal picker or segmented buttons
+  //    - checkbox → TouchableOpacity with check icon
+  //    - signature → placeholder TouchableOpacity "اضغط للتوقيع"
+  // 3. For table-type forms (3,4,5,6,7,8,14): render AddRow button + FlatList of rows
+  // 4. For section-type forms (13): render collapsible section cards
+  // 5. All labels RTL, all inputs RTL
+  // 6. Values saved to bodyJson (JSON string) in SQLite
+}
+```
+
+Export `FORM_SCHEMAS` as a constant object in `src/db/formSchemas.js`:
+
+```js
+export const FORM_SCHEMAS = {
+  1:  { type: 'sections', sections: [...] },
+  2:  { type: 'flat',     fields: [...] },
+  3:  { type: 'table',    header_fields: [...], row_fields: [...], footer_fields: [...] },
+  // ... all 15
+  11: { type: 'workflow', handled_by: 'Form31Screen' },
+};
+```
