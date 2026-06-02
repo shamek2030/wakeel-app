@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
@@ -21,6 +22,7 @@ const QUICK = [
 
 export function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { settings } = useSettings();
   const { isPro } = usePro();
   const [stats, setStats] = useState({ students: 0, records: 0, violations: 0 });
@@ -49,7 +51,7 @@ export function HomeScreen() {
           </TouchableOpacity>
         }
       />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}>
         <Text style={styles.date}>{formatHijriDate()}</Text>
 
         {!isPro ? (
@@ -90,7 +92,7 @@ function StatCard({ label, value, icon, color }) {
   return (
     <Card style={styles.statCard}>
       <Ionicons name={icon} size={22} color={color} />
-      <Text style={styles.statValue}>{toArabicNumerals(value)}</Text>
+      <Text style={styles.statValue}>{toArabicNumerals(value ?? 0)}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Card>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
@@ -18,6 +19,7 @@ const CAT_COLORS = {
 
 export function RecordsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [cat, setCat] = useState('all');
 
   const forms = cat === 'all' ? FORMS_META : FORMS_META.filter((f) => f.category === cat);
@@ -42,7 +44,7 @@ export function RecordsScreen() {
       <FlatList
         data={forms}
         keyExtractor={(item) => String(item.number)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 80 }]}
         renderItem={({ item }) => {
           const cc = CAT_COLORS[item.category] || CAT_COLORS.reg;
           const isDeep = item.deep;

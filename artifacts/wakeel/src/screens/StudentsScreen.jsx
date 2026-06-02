@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Modal, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as XLSX from 'xlsx';
@@ -28,6 +29,7 @@ const NEW_FIELDS = [
 
 export function StudentsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { canAddStudent, isPro } = usePro();
   const [query, setQuery] = useState('');
   const [students, setStudents] = useState([]);
@@ -126,7 +128,7 @@ export function StudentsScreen() {
       <FlatList
         data={students}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 80 }]}
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"

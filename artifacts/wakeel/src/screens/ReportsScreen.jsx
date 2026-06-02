@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
@@ -11,6 +12,7 @@ import { getStudentsCount, getRecordsCount, getViolationsCount, getRecords } fro
 import { FORMS_META } from '../db/formSchemas';
 
 export function ReportsScreen() {
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState({ students: 0, records: 0, violations: 0 });
   const [byForm, setByForm] = useState([]);
 
@@ -38,7 +40,7 @@ export function ReportsScreen() {
   return (
     <ScreenContainer edges={['top']}>
       <AppHeader title="التقارير والإحصاءات" />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}>
         <View style={styles.statsRow}>
           <Stat label="إجمالي الطلاب" value={stats.students} icon="people" color={C.blue} bg={C.blueBg} />
           <Stat label="إجمالي السجلات" value={stats.records} icon="document-text" color={C.green} bg={C.greenBg} />
@@ -80,7 +82,7 @@ function Stat({ label, value, icon, color, bg }) {
       <View style={[styles.statIcon, { backgroundColor: bg }]}>
         <Ionicons name={icon} size={20} color={color} />
       </View>
-      <Text style={styles.statValue}>{toArabicNumerals(value)}</Text>
+      <Text style={styles.statValue}>{toArabicNumerals(value ?? 0)}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Card>
   );

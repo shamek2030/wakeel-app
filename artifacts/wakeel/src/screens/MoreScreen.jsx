@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
@@ -11,7 +12,7 @@ import { FONTS, SIZES } from '../theme/typography';
 import { usePro } from '../context/ProContext';
 
 const ITEMS = [
-  { key: 'evidence', label: 'الأدلة والمرفقات', icon: 'folder-open', color: C.amber, bg: C.amberBg, route: '/evidence' },
+  { key: 'evidence', label: 'رفع الشواهد', icon: 'folder-open', color: C.amber, bg: C.amberBg, route: '/evidence' },
   { key: 'settings', label: 'إعدادات المدرسة', icon: 'settings', color: C.blue, bg: C.blueBg, route: '/settings' },
   { key: 'subscription', label: 'الاشتراك (برو)', icon: 'star', color: C.green, bg: C.greenBg, route: '/subscription' },
   { key: 'privacy', label: 'الخصوصية والبيانات', icon: 'shield-checkmark', color: C.purple, bg: C.purpleBg, route: '/privacy' },
@@ -19,12 +20,13 @@ const ITEMS = [
 
 export function MoreScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { isPro } = usePro();
 
   return (
     <ScreenContainer edges={['top']}>
       <AppHeader title="المزيد" />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}>
         <LinearGradient colors={[C.primary, C.primaryDark]} style={styles.profile}>
           <View style={styles.profileIcon}>
             <Ionicons name="shield-checkmark" size={32} color={C.accent} />
