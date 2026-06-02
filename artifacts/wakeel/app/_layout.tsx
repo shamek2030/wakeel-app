@@ -1,60 +1,70 @@
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from "@expo-google-fonts/inter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { I18nManager } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAppFonts } from "../src/hooks/useFonts";
+import { initDatabase } from "../src/db/database";
+import { SettingsProvider } from "../src/context/SettingsContext";
+import { ProProvider } from "../src/context/ProContext";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Force right-to-left layout for the Arabic-only UI.
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
+
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
-
-function RootLayoutNav() {
-  return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
-  );
-}
-
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
+  const [fontsLoaded, fontError] = useAppFonts();
+  const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    initDatabase().finally(() => setDbReady(true));
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && dbReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, dbReady]);
 
-  if (!fontsLoaded && !fontError) return null;
+  // Safety net: never let the native splash stay up indefinitely if fonts hang.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Render as soon as the DB is ready; custom fonts swap in when available so
+  // the UI is never blocked by font loading (which can hang on web).
+  if (!dbReady) return null;
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView>
-            <KeyboardProvider>
-              <RootLayoutNav />
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <SettingsProvider>
+            <ProProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="login" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="student/[id]" />
+                <Stack.Screen name="record/[formNumber]" />
+                <Stack.Screen name="form31" />
+                <Stack.Screen name="evidence" />
+                <Stack.Screen name="settings" />
+                <Stack.Screen name="privacy" />
+                <Stack.Screen name="subscription" />
+              </Stack>
+            </ProProvider>
+          </SettingsProvider>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

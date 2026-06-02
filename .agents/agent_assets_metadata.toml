@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "V4yY1JJZRjGqHvKWgH5ZR"
+uri = "file://artifacts/wakeel/assets/images/icon.png"
+type = "image"
+title = "generated_image"
